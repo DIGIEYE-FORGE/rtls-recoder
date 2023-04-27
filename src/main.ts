@@ -117,14 +117,14 @@ async function updateDevicelastTelemetries({
         deviceId: device.id,
       },
     });
-  // console.log(
-  //   device.serial,
-  //   Object.fromEntries(
-  //     device.lastTelemetries
-  //       .filter((l) => l.name !== "anchor")
-  //       .map((lastTelemetry) => [lastTelemetry.name, lastTelemetry.value])
-  //   )
-  // );
+  console.log(
+    device.serial,
+    Object.fromEntries(
+      device.lastTelemetries
+        .filter((l) => l.name !== "anchor")
+        .map((lastTelemetry) => [lastTelemetry.name, lastTelemetry.value])
+    )
+  );
 }
 
 client.on("message", async (topic, payload) => {
