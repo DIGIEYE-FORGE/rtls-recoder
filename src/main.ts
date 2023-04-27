@@ -105,26 +105,20 @@ async function updateDevicelastTelemetries({
       },
     },
   });
-  if (device && inLine)
+  if (device && (inLine || inPoste)) {
     await prisma.lastTelemetry.upsert({
       where: { deviceId_name: { deviceId: device.id, name: "lastSeen" } },
       update: {
-        value: new Date().toISOString().replace("T", " ").replace("Z", ""),
+        value: new Date().toISOString(),
       },
       create: {
-        value: new Date().toISOString().replace("T", " ").replace("Z", ""),
+        value: new Date().toISOString(),
         name: "lastSeen",
         deviceId: device.id,
       },
     });
-  console.log(
-    device.serial,
-    Object.fromEntries(
-      device.lastTelemetries
-        .filter((l) => l.name !== "anchor")
-        .map((lastTelemetry) => [lastTelemetry.name, lastTelemetry.value])
-    )
-  );
+  }
+  console.log(new Date(), device);
 }
 
 client.on("message", async (topic, payload) => {
