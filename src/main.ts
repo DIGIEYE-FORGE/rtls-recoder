@@ -53,14 +53,18 @@ async function updateDevicelastTelemetries({
     },
     {
       name: "inPoste",
-      value: false,
+      value: inPoste,
     },
     {
       name: "isStrange",
       value: isStrange,
     },
   ];
-
+  if (inLine)
+    lastTelemetries.push({
+      name: "lastInLine",
+      value: new Date().toISOString(),
+    });
   const device = await prisma.device.upsert({
     select: {
       id: true,
@@ -70,12 +74,10 @@ async function updateDevicelastTelemetries({
     where: { serial: tagId },
     update: {
       lastTelemetries: {
-        updateMany: lastTelemetries
-          .filter((l) => l.value)
-          .map((lastTelemetry) => ({
-            where: { name: lastTelemetry.name },
-            data: { value: lastTelemetry.value },
-          })),
+        updateMany: lastTelemetries.map((lastTelemetry) => ({
+          where: { name: lastTelemetry.name },
+          data: { value: lastTelemetry.value },
+        })),
       },
     },
     create: {
@@ -115,6 +117,14 @@ async function updateDevicelastTelemetries({
         deviceId: device.id,
       },
     });
+  console.log(
+    device.serial,
+    Object.fromEntries(
+      device.lastTelemetries
+        .filter((l) => l.name !== "anchor")
+        .map((lastTelemetry) => [lastTelemetry.name, lastTelemetry.value])
+    )
+  );
 }
 
 client.on("message", async (topic, payload) => {
