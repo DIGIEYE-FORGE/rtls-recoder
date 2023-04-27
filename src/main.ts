@@ -60,11 +60,6 @@ async function updateDevicelastTelemetries({
       value: isStrange,
     },
   ];
-  if (inLine)
-    lastTelemetries.push({
-      name: "lastInLine",
-      value: new Date().toISOString(),
-    });
   const device = await prisma.device.upsert({
     select: {
       id: true,
@@ -105,20 +100,49 @@ async function updateDevicelastTelemetries({
       },
     },
   });
-  if (device && (inLine || inPoste)) {
-    await prisma.lastTelemetry.upsert({
-      where: { deviceId_name: { deviceId: device.id, name: "lastSeen" } },
-      update: {
-        value: new Date().toISOString(),
-      },
-      create: {
-        value: new Date().toISOString(),
-        name: "lastSeen",
-        deviceId: device.id,
-      },
-    });
+  if (device) {
+    if (isStrange && inLine) {
+      await prisma.lastTelemetry.upsert({
+        where: {
+          deviceId_name: { deviceId: device.id, name: "lastIsStrange" },
+        },
+        update: {
+          value: new Date().toISOString(),
+        },
+        create: {
+          value: new Date().toISOString(),
+          name: "lastIsStrange",
+          deviceId: device.id,
+        },
+      });
+    }
+    if (inPoste) {
+      await prisma.lastTelemetry.upsert({
+        where: { deviceId_name: { deviceId: device.id, name: "lastInPoste" } },
+        update: {
+          value: new Date().toISOString(),
+        },
+        create: {
+          value: new Date().toISOString(),
+          name: "lastInPoste",
+          deviceId: device.id,
+        },
+      });
+    }
+    if (inPoste || inLine) {
+      await prisma.lastTelemetry.upsert({
+        where: { deviceId_name: { deviceId: device.id, name: "lastSeen" } },
+        update: {
+          value: new Date().toISOString(),
+        },
+        create: {
+          value: new Date().toISOString(),
+          name: "lastSeen",
+          deviceId: device.id,
+        },
+      });
+    }
   }
-  console.log(new Date(), device);
 }
 
 client.on("message", async (topic, payload) => {
