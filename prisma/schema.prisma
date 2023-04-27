@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+  // provider = "prisma-erd-generator"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VirtualDevice {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  devices   Device[]
+  tenantId  Int?     @map("tenant_id")
+
+  @@index([tenantId], name: "virtual_devices_tenant_id_index")
+  @@map("virtual_devices")
+}
+
+model Machine {
+  id              Int             @id @default(autoincrement())
+  name            String          @db.VarChar(50)
+  type            String          @db.VarChar(50)
+  reference       String          @unique() @db.VarChar(50)
+  brand           String          @db.VarChar(70)
+  model           String          @db.VarChar(70)
+  startDate       DateTime        @map("start_date")
+  instalationDate DateTime        @map("end_date")
+  agent           String          @db.VarChar(70)
+  voltage         Int             @default(0)
+  isOn            Boolean         @default(false)
+  powerSource     String          @map("power_source") @db.VarChar(70)
+  software        String          @db.VarChar(200)
+  safetyFeatures  String          @map("safety_features") @db.VarChar(200)
+  spareParts      String          @map("sper_part") @db.VarChar(200)
+  documents       File[]
+  preventives     Preventive[]
+  predictives     Predictive[]
+  devices         Device[]
+  group           Group?          @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId         Int?            @map("group_id")
+  lastTelemetries LastTelemetry[]
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  history         History[]
+  alerts          Alert[]
+
+  @@map("machines")
+}
+
+model Preventive {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  frequency   String   @db.VarChar(100)
+  description String   @db.VarChar(100)
+  machineId   Int?
+  machine     Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model Predictive {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(50)
+  minValue     Float    @map("min_value")
+  maxValue     Float    @map("max_value")
+  unity        String   @db.VarChar(50)
+  alertLevel   String   @map("alert_level") @db.VarChar(50)
+  alertMessage String   @map("alert_message") @db.VarChar(50)
+  machineId    Int?
+  machine      Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+}
+
+model Group {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(50)
+  type            String    @db.VarChar(50)
+  attributes      Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  parentId        Int?      @map("parent_id")
+  parent          Group?    @relation("group_tree", fields: [parentId], references: [id])
+  subGroups       Group[]   @relation("group_tree")
+  affectedDevices Device[]  @relation("affected_devices")
+  currentDevices  Device[]  @relation("current_devices")
+  tenantId        Int?      @map("tenant_id")
+  machines        Machine[]
+  alerts          Alert[]
+
+  @@index([tenantId], name: "groups_tenant_id_index")
+  @@map("groups")
+}
+
+model Alert {
+  id         Int       @id @default(autoincrement())
+  deviceId   Int?
+  device     Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  group      Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  machine    Machine?  @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  attributes Json      @default("{}") @map("attributes") @db.Json
+  ackowledge Boolean   @default(false)
+  rapports   Rapport[]
+  groupId    Int?
+  machineId  Int?
+
+  @@map("alert")
+}
+
+model Rapport {
+  id          Int      @id @default(autoincrement())
+  alertId     Int
+  alert       Alert?   @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId      Int
+  userName    String   @map("user_name")
+  couse       String
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  attributes  Json     @default("{}") @map("attributes") @db.Json
+
+  @@map("rapport")
+}
+
+model Decoder {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique @db.VarChar(50)
+  description   String          @db.VarChar(50)
+  fnc           String
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
+  deviceProfile DeviceProfile[]
+
+  @@map("decoders")
+}
+
+model DeviceType {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique @db.VarChar(50)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deviceProfiles DeviceProfile[]
+
+  @@map("device_types")
+}
+
+model File {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  machine   Machine? @relation(fields: [machineId], references: [id])
+  machineId Int?
+  deviceId  Int?
+  device    Device?  @relation(fields: [deviceId], references: [id])
+}
+
+model Firmware {
+  id          Int     @id @default(autoincrement())
+  name        String? @db.VarChar(100)
+  version     String? @db.VarChar(100)
+  description String? @db.VarChar(255)
+  url         String? @unique
+  size        Int?
+
+  hash      String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  device    Device[]
+
+  @@unique([name, version])
+  @@map("firmwares")
+}
+
+model Protocol {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique @db.VarChar(50)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deviceProfiles DeviceProfile[]
+
+  @@map("protocols")
+}
+
+model DeviceProfile {
+  id              Int             @id @default(autoincrement())
+  name            String          @unique @db.VarChar(50)
+  description     String?         @db.VarChar(255)
+  logo            String?         @db.VarChar(255)
+  cridentialsType TypeCredential? @map("cridentials_type")
+  deviceType      DeviceType?     @relation(fields: [deviceTypeId], references: [id])
+  deviceTypeId    Int?            @map("device_type_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  devices         Device[]
+  protocol        Protocol?       @relation(fields: [protocolId], references: [id])
+  protocolId      Int?
+  decoder         Decoder?        @relation(fields: [decoderId], references: [id])
+  decoderId       Int?
+  attributes      Json?
+
+  @@map("device_profiles")
+}
+
+model Credential {
+  id          Int            @id @default(autoincrement())
+  username    String?        @unique
+  password    String?
+  token       String?        @unique
+  certificate String?
+  type        TypeCredential @default(USERPASSWORD)
+  device      Device?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("credentials")
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  devices   Device[]
+
+  @@map("tags")
+}
+
+model VmqAuthAcl {
+  id           Int      @id @default(autoincrement())
+  mountpoint   String   @default("") @db.VarChar(10)
+  username     String   @db.VarChar(128)
+  clientId     String   @map("client_id") @db.VarChar(128)
+  password     String?  @db.VarChar(128)
+  publishAcl   Json     @map("publish_acl")
+  subscribeAcl Json     @map("subscribe_acl")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([mountpoint, username, clientId])
+  @@map("vmq_auth_acl")
+}
+
+model Device {
+  id              Int             @id @default(autoincrement())
+  name            String          @db.VarChar(50)
+  description     String?         @db.VarChar(255)
+  serial          String          @unique @db.VarChar(100)
+  isPassive       Boolean         @default(false) @map("is_passive")
+  isOnline        Boolean         @default(false) @map("is_online")
+  isdecoded       Boolean         @default(false) @map("is_decoder")
+  credential      Credential?     @relation(fields: [credentialId], references: [id])
+  credentialId    Int?            @unique
+  configuration   String?         @db.VarChar(250)
+  attributes      Attribute[]
+  lastTelemetries LastTelemetry[]
+  deviceProfile   DeviceProfile?  @relation(fields: [deviceProfileId], references: [id])
+  deviceProfileId Int?
+  firmware        Firmware?       @relation(fields: [firmwareId], references: [id])
+  firmwareId      Int?
+  ip              String?         @db.VarChar(50)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  tags            Tag[]
+  VirtualDevice   VirtualDevice?  @relation(fields: [virtualDeviceId], references: [id])
+  virtualDeviceId Int?
+  alerts          Alert[]
+  group           Group?          @relation("affected_devices", fields: [groupId], references: [id])
+  groupId         Int?
+  currentGroup    Group?          @relation("current_devices", fields: [currentGroupId], references: [id])
+  currentGroupId  Int?
+  tenantId        Int?            @map("tenant_id")
+  history         History[]
+  Machine         Machine?        @relation(fields: [machineId], references: [id])
+  machineId       Int?
+  File            File[]
+  user            User?
+
+  @@index([tenantId], name: "tenant_id")
+  @@map("devices")
+}
+
+model Attribute {
+  id        Int      @id @default(autoincrement())
+  name      String
+  value     Json
+  deviceId  Int      @map("device_id")
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([deviceId, name])
+  @@map("attributes")
+}
+
+model LastTelemetry {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  value     Json
+  deviceId  Int      @map("device_id")
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  date      DateTime @default(now()) @map("date")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  machines  Machine? @relation(fields: [machineId], references: [id])
+  machineId Int?
+
+  @@unique([deviceId, name])
+  @@map("last_telemetry")
+}
+
+model History {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  value     Json     @db.Json
+  deviceId  Int?     @map("device_id")
+  device    Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  date      DateTime @default(now()) @map("date")
+  machines  Machine? @relation(fields: [machineId], references: [id])
+  machineId Int?
+
+  @@index([createdAt], name: "created_at")
+  @@map("history")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  email     String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  logo      String?  @db.VarChar(255)
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tag       Device?  @relation(fields: [deviceId], references: [id])
+  deviceId  Int?     @unique @map("device_id")
+
+  @@map("users")
+}
+
+enum TypeCredential {
+  TOKEN
+  CERTIFICATE
+  USERPASSWORD
+}
+
+enum Role {
+  ADMIN
+  USER
+}
